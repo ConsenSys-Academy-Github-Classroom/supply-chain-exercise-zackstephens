@@ -1,6 +1,5 @@
 let BN = web3.utils.BN;
 let SupplyChain = artifacts.require("SupplyChain");
-let { catchRevert } = require("./exceptionsHelpers.js");
 const { expectRevert } = require('@openzeppelin/test-helpers');
 const { items: ItemStruct, isDefined, isPayable, isType } = require("./ast-helper");
 

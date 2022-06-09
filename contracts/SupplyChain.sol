@@ -52,15 +52,19 @@ contract SupplyChain {
   // <modifier: isOwner
 
   modifier verifyCaller (address _address) { 
-     require (msg.sender == _address); 
+     require(msg.sender == _address); 
     _;
   }
-
-  modifier paidEnough(uint _price) { 
-     require(msg.value >= _price);  
+  modifier paidEnough(uint _sku) { 
+    assert(msg.value >= items[_sku].price); 
     _;
   }
-
+/*
+  modifier paidEnough(uint sku) { 
+     require(msg.value >= items[sku].price);  
+    _;
+  }
+*/
   modifier checkValue(uint _sku) {
     //refund them after pay for item (why it is before, _ checks for logic before func)
     _;
@@ -76,11 +80,20 @@ contract SupplyChain {
   // value, so checking that Item.State == ForSale is not sufficient to check
   // that an Item is for sale. Hint: What item properties will be non-zero when
   // an Item has been added?
-
+  modifier forSale(uint _sku) { 
+    require(
+      items[_sku].state == State.ForSale 
+        && items[_sku].price != 0
+      //"The item is not for sale"
+      ); 
+    _;
+  }
+/*
    modifier forSale(uint _sku) {
     require(items[_sku].price != 0 && items[_sku].state == State.ForSale);
     _;
    }
+   */
    modifier sold(uint _sku) {
      require(items[_sku].state == State.Sold);
      _;
@@ -126,14 +139,28 @@ contract SupplyChain {
   //    - check the value after the function is called to make 
   //      sure the buyer is refunded any excess ether sent. 
   // 6. call the event associated with this function!
-  function buyItem(uint sku) 
+  function buyItem(uint _sku) 
+    public
+    payable
+    forSale(_sku)
+    paidEnough(_sku)
+    checkValue(_sku) 
+  {
+    items[_sku].state = State.Sold;
+    items[_sku].buyer = msg.sender;
+    items[_sku].seller.transfer(items[_sku].price);
+    emit LogSold(items[_sku].sku);
+  }
+  /*function buyItem(uint sku) 
     public 
     payable 
     forSale(sku)
-    paidEnough(items[sku].price) 
+    paidEnough(sku) 
     checkValue(sku) 
   {
-    items[sku].buyer = msg.sender;
+    // require(msg.value >= items[sku].price);
+
+    items[sku].buyer = payable(msg.sender);
 
     items[sku].seller.transfer(items[sku].price);
 
@@ -141,17 +168,18 @@ contract SupplyChain {
 
     emit LogSold(sku);
   }
+  */
 
   // 1. Add modifiers to check:
   //    - the item is sold already 
   //    - the person calling this function is the seller. 
   // 2. Change the state of the item to shipped. 
   // 3. call the event associated with this function!
-  function shipItem(uint sku) public verifyCaller(items[sku].seller) sold(sku) {
+  function shipItem(uint _sku) public verifyCaller(items[_sku].seller) sold(_sku) {
 
-    items[sku].state = State.Shipped;
+    items[_sku].state = State.Shipped;
 
-    emit LogShipped(sku);
+    emit LogShipped(_sku);
   }
 
   // 1. Add modifiers to check 
@@ -159,11 +187,11 @@ contract SupplyChain {
   //    - the person calling this function is the buyer. 
   // 2. Change the state of the item to received. 
   // 3. Call the event associated with this function!
-  function receiveItem(uint sku) public verifyCaller(items[sku].buyer) shipped(sku) {
+  function receiveItem(uint _sku) public verifyCaller(items[_sku].buyer) shipped(_sku) {
 
-    items[sku].state = State.Received;
+    items[_sku].state = State.Received;
 
-    emit LogReceived(sku);
+    emit LogReceived(_sku);
   }
 
   // Uncomment the following code block. it is needed to run tests
